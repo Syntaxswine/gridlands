@@ -13,8 +13,9 @@ Roads not taken yet, roughly ordered by pull.
   and mark deltas where they meet the sea.
 - **Meanders.** D8 on smooth slopes runs straight; a curvature-biased walk
   or post-hoc displacement would read more alluvial.
-- **Tile/engine export.** The grid + class enum is one step from a tileset
-  or autotile export (Godot/Tiled JSON) for use as a game-map front end.
+- **Tile/autotile export.** terrain.json + .glb ship (docs/TERRAIN-FORMAT.md);
+  still open: Tiled/Godot autotile JSON, a cropped/downsampled window export,
+  and river-mouth discharge estimates for solvers that want inflow.
 - **Named features.** Flood-fill regions (this bay, that range) + the seed
   word-list = automatic gazetteer in field-guide style.
 - **Mutation-test the checker.** Break each invariant on purpose (skip the

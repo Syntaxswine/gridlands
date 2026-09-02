@@ -3,6 +3,7 @@
 // dial positions are the point of a preset).
 
 import { generate, makeParams, PRESETS } from "./generate.js";
+import { terrainJson, buildGlb } from "./export3d.js";
 import { render, PAL } from "./render.js";
 import { C, CLASS_INFO, metersAbove, METERS_SPAN } from "./classify.js";
 import { WIND_NAMES } from "./moisture.js";
@@ -207,6 +208,16 @@ $("expTxt").addEventListener("click", () => {
     lines.push(row);
   }
   download(`${stem()}.txt`, new Blob([lines.join("\n")], { type: "text/plain" }));
+});
+
+$("expGlb").addEventListener("click", () => {
+  const glb = buildGlb(state.world);
+  download(`${stem()}.glb`, new Blob([glb], { type: "model/gltf-binary" }));
+});
+
+$("expTerrain").addEventListener("click", () => {
+  download(`${stem()}.terrain.json`,
+    new Blob([terrainJson(state.world)], { type: "application/json" }));
 });
 
 $("expJson").addEventListener("click", () => {

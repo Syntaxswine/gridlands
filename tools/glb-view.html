@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>gridlands glb check</title>
+<!-- Smoke-test viewer for exported .glb files: loads them with a real
+     third-party importer (three.js GLTFLoader) so "another engine can read
+     this" is tested, not assumed. Needs the internet for the CDN scripts.
+     Open /tools/glb-view.html?url=/out/<file>.glb, or drop a file on it. -->
+<style>
+  body { margin: 0; background: #edeade; color: #3b382e; font: 12px ui-monospace, Consolas, monospace; }
+  #hud { position: fixed; top: 8px; left: 10px; white-space: pre; background: #f6f4ecd0; padding: 6px 8px; border: 1px solid #c8c2ae; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="hud">drop a .glb here, or ?url=…</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+  const hud = document.getElementById("hud");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xedeade);
+  const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 1, 1e6);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x888877, 1.0));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(-1, 1.2, -0.6);
+  scene.add(sun);
+
+  let root = null, t0 = performance.now();
+  function frame() {
+    requestAnimationFrame(frame);
+    if (root) root.rotation.y = ((performance.now() - t0) / 1000) * 0.15;
+    renderer.render(scene, cam);
+  }
+  frame();
+
+  function show(gltf, name) {
+    if (root) scene.remove(root);
+    root = gltf.scene;
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const ctr = box.getCenter(new THREE.Vector3());
+    root.position.sub(ctr); // spin about the map centre
+    scene.add(root);
+    const span = Math.max(size.x, size.z);
+    cam.position.set(0, span * 0.55, span * 0.95);
+    cam.lookAt(0, 0, 0);
+    let verts = 0, tris = 0, meshes = 0;
+    root.traverse((o) => {
+      if (o.isMesh) {
+        meshes++;
+        verts += o.geometry.attributes.position.count;
+        tris += o.geometry.index.count / 3;
+        o.material.vertexColors = true;
+      }
+    });
+    hud.textContent =
+      `${name}\nmeshes ${meshes} · verts ${verts} · tris ${tris}\n` +
+      `extent ${size.x.toFixed(0)} × ${size.y.toFixed(0)} × ${size.z.toFixed(0)} m`;
+    window.glbStats = { name, meshes, verts, tris, size: [size.x, size.y, size.z] };
+  }
+
+  const loader = new THREE.GLTFLoader();
+  const url = new URLSearchParams(location.search).get("url");
+  if (url) {
+    loader.load(url, (g) => show(g, url.split("/").pop()),
+      undefined, (e) => { hud.textContent = "LOAD FAILED: " + e; });
+  }
+  addEventListener("dragover", (e) => e.preventDefault());
+  addEventListener("drop", (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    f.arrayBuffer().then((buf) => loader.parse(buf, "", (g) => show(g, f.name)));
+  });
+</script>
+</body>
+</html>

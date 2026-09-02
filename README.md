@@ -89,26 +89,49 @@ surfaces, strictly descending drainage, legal outlets, rivers reaching
 water, river/playa definitions both ways, tree legality, beaches touching
 ocean, value ranges, double-generation determinism, distinct map ids across
 the matrix, per-preset water fractions and existence floors (rig: size M,
-default dials). 274 checks at last count.
+default dials), plus the 3D-export invariants: byte-exact base64
+round-trips, surface semantics (0 on ocean, spill on lakes, ==bed when
+dry), exactly-flat lake surfaces, the Manning table, glyph/legend
+round-trip, glb well-formedness (header, chunk alignment, accessor and
+triangle counts), and byte-identical re-export. 288 checks at last count.
 
 ## Files
 
 ```
-index.html          UI shell (field-guide styling inline)
-js/rng.js           seeding, per-cell hashing, fingerprint
-js/noise.js         gradient noise, fBm, ridged
-js/heightmap.js     elevation field
-js/hydrology.js     priority-flood, ocean/lakes/playas, D8 flow, accumulation
-js/moisture.js      orographic sweep, riparian bonus
-js/classify.js      the rule table, trees, census
-js/generate.js      pipeline orchestration, presets
-js/render.js        canvas painting (hillshade, contours, trees)
-js/main.js          controls, inspector, exports
-tools/check.mjs     invariant suite
-tools/serve.mjs     zero-dep static server
+index.html           UI shell (field-guide styling inline)
+js/rng.js            seeding, per-cell hashing, fingerprint
+js/noise.js          gradient noise, fBm, ridged
+js/heightmap.js      elevation field
+js/hydrology.js      priority-flood, ocean/lakes/playas, D8 flow, accumulation
+js/moisture.js       orographic sweep, riparian bonus
+js/classify.js       the rule table, trees, census
+js/generate.js       pipeline orchestration, presets
+js/render.js         canvas painting (hillshade, contours, trees)
+js/export3d.js       terrain.json + binary glTF exporters (DOM-free)
+js/b64.js            portable base64 (browser/node byte-identical)
+js/main.js           controls, inspector, exports
+tools/check.mjs      invariant suite
+tools/serve.mjs      zero-dep static server
+tools/export.mjs     headless exporter CLI
+tools/glb-view.html  three.js smoke-test viewer for exported .glb
+docs/                TERRAIN-FORMAT.md spec + water-simulator proposal
 ```
 
-Exports: PNG of the canvas, ASCII map (`.txt`, legend included), params JSON
-(enough to regenerate the exact map).
+## Exports
+
+- **PNG** of the canvas; **ASCII map** (`.txt`, legend included); **params
+  JSON** (enough to regenerate the exact map).
+- **TERRAIN.JSON** — the `gridlands-terrain` v1 interchange: bed elevation
+  and standing-water surface in metres (float32, base64, exact), classes,
+  tree mask, per-cell Manning n. Spec: [docs/TERRAIN-FORMAT.md](docs/TERRAIN-FORMAT.md).
+- **MESH.GLB** — binary glTF 2.0 heightmesh (terrain + translucent water,
+  per-vertex class colours, metres, north at −Z). Opens in engines and
+  viewers directly; smoke-tested against three.js GLTFLoader
+  (`tools/glb-view.html?url=…`).
+- Headless: `node tools/export.mjs --preset X --seed Y --out dir`.
+
+The water-simulator bridge — same beds, its solver, lakes arriving exactly
+at rest — is specced in
+[docs/PROPOSAL-WATER-IMPORT.md](docs/PROPOSAL-WATER-IMPORT.md).
 
 See [BACKLOG.md](BACKLOG.md) for the roads not yet taken.
