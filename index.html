@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRIDLANDS — rule-based grid terrain generator</title>
+<style>
+  :root {
+    --bg: #edeade;
+    --panel: #f6f4ec;
+    --border: #c8c2ae;
+    --ink: #3b382e;
+    --dim: #8a8474;
+    --accent: #6f8c5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h1 { font-size: 14px; margin: 0; letter-spacing: 3px; font-weight: 600; }
+  .sub { color: var(--dim); }
+  #mapmeta { margin-left: auto; color: var(--dim); }
+  main { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; }
+  aside { width: 300px; flex: none; display: flex; flex-direction: column; gap: 10px; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+  }
+  h2 {
+    font-size: 11px; margin: 0 0 6px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+  }
+  .row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  .row label { width: 74px; flex: none; color: var(--dim); }
+  .row output { width: 44px; flex: none; text-align: right; }
+  input[type=range] { flex: 1; accent-color: var(--accent); height: 18px; }
+  select, input[type=text], button {
+    font: inherit; color: var(--ink);
+    background: #fffdf6; border: 1px solid var(--border);
+    padding: 2px 6px;
+  }
+  input[type=text] { flex: 1; min-width: 0; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fffdf6; border-color: var(--accent); letter-spacing: 1px; }
+  #rules ol { margin: 0; padding-left: 22px; }
+  #rules li { margin: 1px 0; }
+  #rules .note { color: var(--dim); margin-top: 5px; }
+  #census table { border-collapse: collapse; width: 100%; }
+  #census td { padding: 1px 4px 1px 0; }
+  #census td.num { text-align: right; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border: 1px solid rgba(0,0,0,.25); vertical-align: -1px; }
+  #censusFoot { color: var(--dim); margin-top: 5px; }
+  #stage { flex: 1; min-width: 0; }
+  canvas { border: 1px solid #a9a291; background: #fff; image-rendering: pixelated; max-width: 100%; }
+  #inspector { margin-top: 6px; color: var(--dim); min-height: 18px; }
+  footer { padding: 6px 16px 14px; color: var(--dim); }
+  .btnrow { display: flex; gap: 6px; }
+  .btnrow button { flex: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GRIDLANDS</h1>
+  <span class="sub">rule-based grid terrain generator</span>
+  <span id="mapmeta">—</span>
+</header>
+<main>
+  <aside>
+    <section>
+      <h2>Generate</h2>
+      <div class="row">
+        <label for="preset">preset</label>
+        <select id="preset"></select>
+        <select id="size">
+          <option value="S">S 132×96</option>
+          <option value="M" selected>M 200×150</option>
+          <option value="L">L 276×204</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="seed">seed</label>
+        <input type="text" id="seed" spellcheck="false">
+        <button id="dice" title="random seed">⚄</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="regen" class="primary" style="flex:1">REGENERATE</button>
+      </div>
+    </section>
+    <section>
+      <h2>Dials</h2>
+      <div class="row"><label>sea level</label><input type="range" id="sea" min="0.20" max="0.70" step="0.01"><output for="sea"></output></div>
+      <div class="row"><label>relief</label><input type="range" id="reliefExp" min="0.60" max="1.80" step="0.05"><output for="reliefExp"></output></div>
+      <div class="row"><label>ridges</label><input type="range" id="ridgeMix" min="0" max="1" step="0.05"><output for="ridgeMix"></output></div>
+      <div class="row"><label>warp</label><input type="range" id="warp" min="0" max="1" step="0.05"><output for="warp"></output></div>
+      <div class="row"><label>moisture</label><input type="range" id="moistureBias" min="-0.30" max="0.30" step="0.02"><output for="moistureBias"></output></div>
+      <div class="row"><label>trees</label><input type="range" id="treeMult" min="0" max="1.5" step="0.05"><output for="treeMult"></output></div>
+      <div class="row"><label>rivers</label><input type="range" id="riverThresh" min="60" max="1200" step="20"><output for="riverThresh"></output></div>
+      <div class="row">
+        <label for="contour">contours</label>
+        <select id="contour">
+          <option value="0">off</option>
+          <option value="100">100 m</option>
+          <option value="200" selected>200 m</option>
+          <option value="400">400 m</option>
+        </select>
+      </div>
+    </section>
+    <section id="rules">
+      <h2>Rules</h2>
+      <ol id="ruleList"></ol>
+      <div class="note" id="ruleNote"></div>
+    </section>
+    <section id="census">
+      <h2>Census</h2>
+      <table id="censusTable"></table>
+      <div id="censusFoot"></div>
+    </section>
+    <section>
+      <h2>Export</h2>
+      <div class="btnrow">
+        <button id="expPng">PNG</button>
+        <button id="expTxt">MAP.TXT</button>
+        <button id="expJson">PARAMS</button>
+      </div>
+    </section>
+  </aside>
+  <div id="stage">
+    <canvas id="map"></canvas>
+    <div id="inspector">hover the map to inspect a cell</div>
+  </div>
+</main>
+<footer>verification: <code>node tools/check.mjs</code> · same seed ⇒ same map id · one cell = 50 m</footer>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
